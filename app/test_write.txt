@@ -1,0 +1,1 @@
+Test write access. If you see this, write permissions are configured correctly.

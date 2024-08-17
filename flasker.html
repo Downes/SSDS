@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KV Board</title>
+    <script>
+
+        let currentMode = 'add';  // Track whether we're adding or updating
+        const flaskSiteUrl = 'https://env-1873872.ca.reclaim.cloud';  // Base URL of your Flask site
+
+        function addOrUpdateKeyValue() {
+            const token = getSiteSpecificCookie(flaskSiteUrl);  // Retrieve the token for the specific Flask site
+
+            // const token = localStorage.getItem('token');  // Retrieve the token from storage
+            const key = document.getElementById("keyInput").value;
+            const instanceData = {
+                instance: document.getElementById("instanceInput").value,
+                id: document.getElementById("idInput").value
+            };
+            const value = JSON.stringify(instanceData);
+
+            const endpoint = currentMode === 'add' ? 'add_kv/' : 'update_kv/';
+            const actionUrl = `https://env-1873872.ca.reclaim.cloud/${endpoint}`;
+
+            fetch(actionUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer '+token  // Include the token in the Authorization header
+                },
+                body: JSON.stringify({ key: key, value: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(JSON.stringify(data));
+                document.getElementById("addKvForm").reset();
+                getKeyValues();  // Refresh the list to show updated data
+                resetForm(); // Reset form to default state
+            })
+            .catch(error => alert('Error processing key-value pair: ' + error));
+        }
+
+        
+        function setFormValues(key, value) {
+            const valueData = JSON.parse(value);
+            document.getElementById("keyInput").value = key;
+            document.getElementById("instanceInput").value = valueData.instance;
+            document.getElementById("idInput").value = valueData.id;
+
+            currentMode = 'update';  // Switch to update mode
+            document.getElementById("submitBtn").textContent = 'Update KV';  // Change button text to Update
+            document.getElementById("deleteBtn").style.display = 'inline';  // Show the delete button
+  
+        }
+
+        function resetForm() {
+            document.getElementById("addKvForm").reset();
+            currentMode = 'add';  // Reset mode to add
+            document.getElementById("submitBtn").textContent = 'Add KV';  // Reset button text to Add
+            document.getElementById("deleteBtn").style.display = 'none';  // Hide the delete button
+   
+        }
+
+        function getKeyValues() {
+            const token = getSiteSpecificCookie(flaskSiteUrl);  // Retrieve the token for the specific Flask site
+            // const token = localStorage.getItem('token');  // Retrieve the token from storage
+            //const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo4LCJleHAiOjE3MjM4MzM3OTd9.z1ur2oyrKyUds9tBmlKBk6pnTpRx8FT1fn-hRH_cvUw";
+            //alert(token);
+            fetch('https://env-1873872.ca.reclaim.cloud/get_kvs/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer '+token  // Include the token in the Authorization header
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const kvList = document.getElementById("kvList");
+                kvList.innerHTML = '';  // Clear previous entries
+                data.forEach(kv => {
+                    const button = document.createElement("button");
+                    button.textContent = `Key: ${kv.key}`;
+                    button.onclick = () => setFormValues(kv.key, kv.value);  // Set onclick to populate form
+                    kvList.appendChild(button);
+                });
+            })
+            .catch(error => alert('Error fetching key-value pairs: ' + error));
+        }
+        
+        function deleteKeyValue() {
+            const token = getSiteSpecificCookie(flaskSiteUrl);  // Retrieve the token for the specific Flask site
+            // const token = localStorage.getItem('token');  // Retrieve the token from storage
+            const key = document.getElementById("keyInput").value;
+
+            if (key) {
+                fetch('https://env-1873872.ca.reclaim.cloud/delete_kv/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer '+token  // Include the token in the Authorization header
+                    },
+                    body: JSON.stringify({ key: key })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(JSON.stringify(data));
+                    document.getElementById("addKvForm").reset(); // Reset the form after successful deletion
+                    getKeyValues(); // Refresh the key-value list
+                    resetForm(); // Reset form to default state
+                })
+                .catch(error => alert('Error deleting key-value pair: ' + error));
+            } else {
+                alert('No key specified for deletion.');
+            }
+        }
+
+        function logout() {
+            // Remove the token from localStorage
+            deleteSiteSpecificCookie(flaskSiteUrl);  // Clears the token for the specific Flask site
+
+            //localStorage.removeItem('token');
+            
+            alert('You have been logged out.');
+
+            // Redirect to the login page with the current URL as the 'next' parameter
+            const currentUrl = encodeURIComponent(window.location.href);
+            window.location.href = `https://env-1873872.ca.reclaim.cloud/login?next=${currentUrl}`;
+        }
+
+        // Function to display the username stored in localStorage
+        function displayUsername() {
+            const username = localStorage.getItem('username');
+            if (username) {
+                const usernameDisplay = document.getElementById('username-display');
+                usernameDisplay.textContent = `Logged in as ${username}!`;
+            } else {
+                // If no username is found, display a default message or hide the element
+                document.getElementById('username-display').textContent = 'Welcome, guest!';
+            }
+        }
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; Secure; SameSite=None";
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function deriveSiteIdentifier(flaskSiteUrl) {
+            const url = new URL(flaskSiteUrl).hostname;  // Extract the hostname from the Flask site URL
+            return url.replace(/\./g, '_');  // Replace dots with underscores to create a valid cookie name
+        }
+
+        function setSiteSpecificCookie(flaskSiteUrl, token, days) {
+            const siteIdentifier = deriveSiteIdentifier(flaskSiteUrl);
+            const cookieName = `access_token_${siteIdentifier}`;
+            setCookie(cookieName, token, days);
+        }
+
+        function getSiteSpecificCookie(flaskSiteUrl) {
+            const siteIdentifier = deriveSiteIdentifier(flaskSiteUrl);
+            const cookieName = `access_token_${siteIdentifier}`;
+            return getCookie(cookieName);
+        }
+
+        function deleteSiteSpecificCookie(flaskSiteUrl) {
+            const siteIdentifier = deriveSiteIdentifier(flaskSiteUrl);
+            const cookieName = `access_token_${siteIdentifier}`;
+            setCookie(cookieName, '', -1);  // Deletes the cookie
+        }
+
+
+        function isTokenExpired(token) {
+            if (!token) { return 1; }
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.exp < Date.now() / 1000;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Function to get a parameter from the URL by name
+            function getParamFromUrl(name) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            }
+
+
+            // Store the token and username in localStorage if they're present in the URL
+            const token = getParamFromUrl('token');
+            const username = getParamFromUrl('username');
+
+
+
+
+            if (token) {
+                setSiteSpecificCookie(flaskSiteUrl, token, 1);
+                // localStorage.setItem('token', token);
+            }
+
+            if (username) {
+                localStorage.setItem('username', username);
+            }
+
+            if (token || username) {
+                history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            // Proceed with other actions, e.g., fetching key-value pairs
+              if (getSiteSpecificCookie(flaskSiteUrl)) {
+                getKeyValues();  // Example function that uses the token
+            } else {
+                console.error('Token not found. Redirecting to login page.');
+                window.location.href = 'https://env-1873872.ca.reclaim.cloud/login?next=' + encodeURIComponent(window.location.href);
+            }
+
+            if (isTokenExpired(getSiteSpecificCookie(flaskSiteUrl))) {
+                console.error('Token expired. Redirecting to login page.');
+                alert("Token expired. Redirecting to login page");
+                window.location.href = 'https://env-1873872.ca.reclaim.cloud/login?next=' + encodeURIComponent(window.location.href);
+            }
+
+            // Display the user name
+            displayUsername();
+        });
+
+    </script>
+
+
+</head>
+<body>
+
+    <h1>Key-Value Store</h1>
+    <span id="username-display"></span>
+    <button id="logout-button" onclick="logout()">Logout</button><br/>
+    <form id="addKvForm" onsubmit="addOrUpdateKeyValue(); return false;">
+        <input type="text" id="instanceInput" placeholder="Enter instance detail" required>
+        <input type="text" id="idInput" placeholder="Enter ID detail" required>
+        <input type="text" id="keyInput" placeholder="Enter key" required>
+        <button type="button" id="submitBtn" onclick="addOrUpdateKeyValue()">Add KV</button>
+        <button type="button" id="deleteBtn" onclick="deleteKeyValue()" style="display: none;">Delete KV</button> <!-- Initially hidden -->
+    </form>
+
+    <button type="button" onclick="getKeyValues()">Display Key-Values</button>
+    <button type="button" onclick="resetForm()">Reset Form</button>
+
+    <h2>Key-Value Pairs</h2>
+    <div id="kvList"></div>
+
+</body>
+</html>
+
