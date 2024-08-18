@@ -29,10 +29,10 @@ I used Reclaim Cloud's Marketplace to create a Flask app. https://app.my.reclaim
 
 Create the app. It will have an address like 'https://env-1873872.ca.reclaim.cloud'. Or just use this address and don't worry at all about setting up the Flask App. If you do create the app, record the new address. Use WebSSH to install the dependencies listed in requirements.txt and upload the code in the app subdirectory of this repository into /var/www/webroot/ROOT using sftp, git or whatever.
 
-On a second server (any server that hosts web pages will do) place the web poage flasker.html
+On a second server (any server that hosts web pages will do) place the web page flasker.html
 If you used the 'https://env-1873872.ca.reclaim.cloud' Flask app you don't have to do anything; otherwise replace every instance of 'https://env-1873872.ca.reclaim.cloud' with the new URL of your Flask app.
 
-Register an account at 'https://env-1873872.ca.reclaim.cloud/register' (for nwhatever URL you are using). Then navigate to flasher.html. It will ask you to login, then function as described thereafter.
+Register an account at 'https://env-1873872.ca.reclaim.cloud/register' (for whatever URL you are using). Then navigate to flasher.html. It will ask you to login, then function as described thereafter.
 
 
 Updates
