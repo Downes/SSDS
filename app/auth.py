@@ -24,6 +24,7 @@ from flask import current_app  # Add this import at the top of your auth.py
 @auth_bp.route("/register", methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
+    next_page = request.args.get('next')  # Capture the 'next' parameter
     if form.validate_on_submit():
         hashed_password = generate_password_hash(form.password.data)
         
@@ -57,8 +58,14 @@ def register():
             flash('Your account has been created! You are now able to log in.', 'success')
             
             # Automatically log in the user after registration or redirect to login page
+           
+            token = generate_token(user.id)
             login_user(user)  # Uncomment to log the user in automatically
-            return jsonify({'message': 'Registration successful'}), 200
+            if next_page:
+                # Redirect to the next page with the token as a URL parameter
+                return redirect(f'{next_page}?token={token}&username={user.username}')
+            return jsonify({'token': token, 'username': user.username}), 200  # Fallback to 
+
 
         except Exception as e:
             db.session.rollback()
@@ -74,15 +81,15 @@ def register():
 @auth_bp.route("/login", methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and check_password_hash(user.password, form.password.data):
             login_user(user)  # Log the user in
             flash('Login successful', 'success')
             token = generate_token(user.id)
+
             # Get the referring page URL from the `next` parameter
-            next_page = request.args.get('next')
+            next_page = request.args.get('next') or request.form.get('next')
             if next_page:
                 # Redirect to the next page with the token as a URL parameter
                 return redirect(f'{next_page}?token={token}&username={user.username}')

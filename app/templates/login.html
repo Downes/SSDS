@@ -29,5 +29,8 @@
             {{ form.submit() }}
         </div>
     </form>
+    <p>Don't have an account? 
+        <a href="{{ url_for('auth.register', next=request.args.get('next')) }}">Register here</a>
+  
 </body>
 </html>
